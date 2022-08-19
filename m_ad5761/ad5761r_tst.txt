@@ -1,0 +1,66 @@
+spi通信
+SDI和SDO都是同时发生的
+原代码先write再read不可取，完全没有考虑read功能的实现
+模块设计考虑为两层
+第一层ad5761控制模块，输出sdi_data给从机，获得从机的反馈数据sdo_data
+第二层spi通信模块，将sdi_data转化为sdi,将sdo_data转化为sdo，完成串行发送与接收。
+这样一来实际发生的顺序应为：
+sdi_data(24bit) -> sdi(1bit)
+		   sdo(1bit) -> sdo_data(24bit)
+
+回读DAC数据的操作为：sdi发送回读指令，此时sdo收到的数据无意义，sdi接着再发送一个NOP，同时sdo收到读取的数据。
+
+注意到sdi必须在clk下降沿有效
+片选信号在posedge clk置零，在SDI发送完成后置1
+发送和接收数据时，SDI在posedge改变，SDO在negedge读取
+
+DAC的sclk通过sys_clk分一下频
+[1:0]sclk_cnt
+always@(posedge clk) sclk_cnt = sclk_cnt + 1;
+sclk_cnt 0 低电平
+	 1 上升沿
+	 2 高电平
+	 3 下降沿
+always@(posedge clk) case(sclk_cnt) 1:sclk = 1; 3:sclk = 0; default:;
+
+
+req和CS是分开的
+可以参考I2C的写法
+SPI处于IDLE闲置状态，done = 0；
+收到req信号时，重置计数寄存器，进入WORK状态
+工作状态应当区分写入和回读
+回读多一个NOP
+模块输入应当确定为[23:0]sdi_data
+写入和读取的bit计数寄存器可以分开设置
+
+每个sclk上升沿检查dac_req 如果为1则将CS置零
+（考虑CS的延迟，是不是可以给SCLK的高低电平各增加一个sys_clk)
+
+sc=0时
+每个sclk的高电平时将当前DB赋给sdi
+每个sclk的下降沿将sdo赋给当前DB
+低电平时bit_cnt + 1
+
+
+
+
+
+
+
+
+
+
+//8.17更新
+spi通信模式
+ad5761r
+sclk上升沿改变数据，下降沿采样
+正常的spi通信下sclk在没有片选时是闲置状态，为0或1
+不确定ad5761r是哪种极性
+先按照闲置0来做
+
+流程：
+在sys_clk下检测DAC_req信号，收到后CS拉低，CS何时升高？在pos sys_clk改变CS
+
+在sys_clk下检测CS，CS=1时，sclk一直为0，当cs=0时，sclk翻转，如果要sclk50MHz的话则always中为pos&neg
+
+确定好sclk后，在sclk上升沿完成

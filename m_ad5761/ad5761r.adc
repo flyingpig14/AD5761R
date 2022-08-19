@@ -1,0 +1,15 @@
+set_pin_assignment	{ DAC_ALERT_N }	{ LOCATION = P133; IOSTANDARD = LVTTL33; }
+set_pin_assignment	{ DAC_CLEAR_N }	{ LOCATION = P136; IOSTANDARD = LVTTL33; }
+set_pin_assignment	{ DAC_CS_N }	{ LOCATION = P143; IOSTANDARD = LVTTL33; }
+set_pin_assignment	{ DAC_DIN }	{ LOCATION = P144; }
+set_pin_assignment	{ DAC_DOUT }	{ LOCATION = P146; IOSTANDARD = LVTTL33; }
+set_pin_assignment	{ DAC_LOAD_N }	{ LOCATION = P145; IOSTANDARD = LVTTL33; }
+set_pin_assignment	{ DAC_RESET_N }	{ LOCATION = P138; IOSTANDARD = LVTTL33; }
+set_pin_assignment	{ DAC_SCLK }	{ LOCATION = P141; IOSTANDARD = LVTTL33; }
+set_pin_assignment	{ UART_RX }	{ LOCATION = P163; IOSTANDARD = LVTTL33; }
+set_pin_assignment	{ UART_TX }	{ LOCATION = P162; IOSTANDARD = LVTTL33; }
+set_pin_assignment	{ clk }	{ LOCATION = P62; IOSTANDARD = LVTTL33; }
+
+
+
+

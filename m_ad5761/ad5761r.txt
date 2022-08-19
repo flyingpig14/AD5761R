@@ -1,0 +1,182 @@
+AD5761 16Bit input Shift Register Format
+
+/**********/**********/**********//**********//**********//**********//**********/
+  .--,       .--,
+ ( (  \.---./  ) )
+  '.__/o   o\__.'
+     {=  ^  =}
+      >  -  <
+     /       \
+    //       \\
+   //|   .   |\\
+   "'\       /'"_.-~^`'-.
+      \  _  /--'         `
+    ___)( )(___
+   (((__) (__)))    高山仰止,景行行止.虽不能至,心向往之。
+
+DB23-DB0
+DB23:DB20 = {X,X,X,0}
+X:dont care
+DB19:DB16 = Register address
+DB15:DB0 = Register data
+
+
+Register address DB19-DB16
+case([DB19:DB16])
+	0000(0): No operation 无操作
+	0001(1): Write to input register(no update) 写入输入寄存器（不更新）
+	0010(2): Update DAC register from input register 根据输入寄存器更新DAC寄存器
+	0011(3): Write and update DAC register 写入并更新DAC寄存器
+	0100(4): Write to control register 写入控制寄存器
+	0101(5): No operation
+	0110(6): No operation
+	0111(7): Software data reset 重置软件数据
+	1000(8): Reserved 保存？
+	1001(9): Disable daisy_chain functionality 禁用菊花链功能
+	1010(A): Readback input register 回读输入寄存器
+	1011(B): Readback DAC register 回读DAC寄存器
+	1100(C): Readback control register 回读控制寄存器
+	1101(D): No operation
+	1110(E): No operation
+	1111(F): Software full reset 软件完全复位
+endcase
+
+conclusion: 3 registers: input register, DAC register, control register
+
+
+WRITE TO CONTROL REGISTER 写入控制寄存器
+DB[23:21] DB20   DB[19:16]     DB[15:11] DB[10:9] DB8 DB7 DB6 DB5 DB[4:3] DB[2:0]
+ XXX       0   Register Addr   Register data
+ XXX       0       0100          XXXXX    CV[1:0] OVR B2C ETS  0  PV[1:0] RA[2:0]
+
+Bit Name & Description
+CV[1:0]		/CLEAR/ voltage selection 清除电压选择
+		00: zero scale 零刻度
+		01: midscale 中档
+		10,11: full scale 满量程
+
+OVR		5% overrange 5%超量程
+		0: 5% overrange disabled 不允许
+		1: 5% overrange enabled 允许
+
+B2C		Bipolar range
+		0: DAC input for bipolar output range is straight binary coded.
+			双极性输出范围的DAC输入为直接二进制编码
+		1: DAC input for bipolar output range is twos complement coded.
+			双极性输出范围的DAC输入为二进制补码编码
+
+ETS		Thermal shutdown alert. The alert may not work correctly if the device powers on with temperature conditions >150°C
+		(greater than the maximum rating of the device).
+		0: internal digital supply does not power down if die temperature exceeds 150°C.
+		1: internal digital supply powers down if die temperature exceeds 150°C.
+		热关机警报。 如果设备在 >150°C 的温度条件下开机，警报可能无法正常工作
+		（大于设备的最大额定值）。
+		0：如果芯片温度超过 150°C，内部数字电源不会断电。
+		1：如果芯片温度超过 150°C，则内部数字电源关闭。
+
+PV[1:0]		Power-up voltage 上电电压
+		00: zero scale 零刻度
+		01: 中档
+		10.11: 满量程
+
+RA[2:0]		Output range. Before an output range configuration, the device must be reset.
+		输出范围。在配置输出范围前，设备必须重置。
+		000: −10V to +10V.
+		001: 0V to +10V.
+		010: −5V to +5V.
+		011: 0V to 5V.
+		100: −2.5V to +7.5V.
+		101: −3V to +3V.
+		110: 0V to 16V.
+		111: 0V to 20V.
+
+
+READBACK CONTROL REGISTER 回读控制寄存器
+
+to SDI Pin
+DB[23:21] X DB[19:16] 1100 DB[15:0]X 
+
+read from SDO Pin
+DB[23:20] XXX0 DB[19:16] register address 1100
+DB[15:13] XXXXX
+DB12 SC
+DB11 BO
+DB[10:0]同 write to control register(除DB5，DB5 = X)
+
+Bit Name & Description
+SC Short_circuit condition. reset at every control register write.
+   0: no short-circuit condition detected
+   1: detected
+   短路情况，控制寄存器写入时复位，0无短路，1短路。
+
+BO Brownout condition. reset at every control register write.
+   0: no brownout condition detected.
+   1:detected
+   掉电情况，控制寄存器写入时复位，0无掉电，1检测到掉电。
+
+
+UPDATE DAC REGISTER FROM INPUT REGISTER
+	The update DAC register function loads the DAC register with the data saved in the input register, and updates the DAC output voltage. This operation is equivalent to a software LDAC. Table 17 outlines how data is written to the DAC register.
+	更新DAC寄存器功能将保存在输入寄存器中的数据加载到DAC寄存器，并更新DAC输出电压。此操作等效于软件的LDAC。下面概述了如何将数据写入DAC寄存器。
+	DB23-DB20:XXX0
+	DB19-DB16:0010
+	DB15-DB0 :X
+
+
+READBACK DAC REGISTER
+	回读DAC寄存器数据
+	The readback DAC register operation provides the contents of the DAC register by setting the register address to 1011. Table 18 outlines the 24-bit shift register for this command. During the next command,  the DAC register contents are shifted out of the SDO pin with the MSB shifted out first. Table 19 outlines the 24-bit data read from the SDO pin, where DB23 is the first bit shifted out.
+	回读DAC寄存器操作通过将寄存器地址设置为1011来提供DAC寄存器的内容。下面概述了该命令的24位移位寄存器。在下一条命令期间，DAC寄存器内容从SDO引脚移出，MSB先移出。概述了从SDO引脚读取的24位数据，其中DB23是移出的第一位。
+	
+	to SDI Pin
+	XXX0_1011_X...X
+	read from SDO Pin
+	XXX0_1011_data read from DAC register(16bit)
+
+
+WRITE AND UPDATE DAC REGISTER
+	The write and update DAC register (Register Address 0011) updates the input register and the DAC register with the entered data-word from the input shift register, irrespective of the state of LDAC. 
+	Setting the register address to 0001 writes the input register with the data from the input shift register, clocked in MSB first on the SDI pin.
+	0011根据输入数据更新输入寄存器和DAC寄存器，个人理解是相当于0001+0010。
+
+READBACK INPUT REGISTER
+	回读输入寄存器
+	除Register Address为1010外其余同回读DAC寄存器
+
+
+DISABLE DAISY-CHAIN FUNCTIONALITY
+	禁用菊花链功能以节省SDO缓冲器小号的功率。禁用时不接受回读请求，因为SDO引脚保持三态。
+	DB23-DB1: XXX0_1001_X...X
+	DB0: DDC
+	DDC为0时允许菊花链功能，为1时禁用。
+
+
+以下软件复位指的是通过软件指令完成硬件器件的复位
+SOFTWARE DATA RESET
+	The AD5761/AD5721 can be reset via software to zero scale, midscale, or full scale (see Table 25). The value to which the device is reset is specified by the PV1 and PV0 bits, which are set in the write to control register command.
+	AD5761和AD5721可以通过软件复位至零量程、中间量程和满量程，器件复位的值由PV0和PV1决定。
+	DB23-DB0:XXX0_0111_X...X
+	PV[1:0]在写入控制寄存器时(addr==0100)设定。
+	
+
+SOFTWARE FULL RESET
+	The device can also be reset completely via software (see Table 26). When the register address is set to 1111, the device behaves in a power-up state, where the output is clamped to AGND and the output buffer is powered down. The user must write to the control register to configure the device, remove the 1 kΩ resistor clamp to ground, and power up the output buffer.The software full reset command is also issued when the DAC output range is reconfigured during normal operation.
+	该器件也可以通过软件完全复位。 当寄存器地址设置为 1111 时，器件处于上电状态，此时输出钳位至 AGND，输出缓冲器断电。 用户必须写入控制寄存器来配置器件，移除 1 kΩ 电阻钳到地，并为输出缓冲器上电。在正常操作期间重新配置 DAC 输出范围时也会发出软件完全复位命令。
+	XXX0_1111_X...X
+
+
+NO OPERATION REGISTERS
+	XXX0_0000/0101/0110/1101/1110_X...X
+	无操作寄存器被忽略，不改变器件的状态。
+	NOP
+
+
+AD5761/AD5721 需要外部基准。选择时要小心，因为参考电压中的任何误差都会反映在器件的输出中。在为高精度应用选择电压参考时，需要考虑四种可能的误差来源：初始精度、温度系数输出电压、长期漂移和输出电压噪声。外部基准输出电压的初始精度误差可能会导致 DAC 出现满量程误差。因此，为了最大限度地减少这些误差，首选具有低初始精度误差规范的参考。
+选择具有输出微调调整功能的基准，例如 ADR421，允许系统设计人员通过将基准电压设置为标称电压以外的电压来微调系统误差。微调调整也可以在环境温度下使用，以微调任何误差。
+长期漂移是衡量基准输出电压随时间漂移多少的指标。具有严格长期漂移规范的基准可确保整个解决方案在其整个生命周期内保持相对稳定。基准输出电压的温度系数会影响增益误差和 TUE。选择具有严格温度系数规格的基准，以降低 DAC 输出电压对环境条件的依赖性。在噪声预算相对较低的高精度应用中，必须考虑基准输出电压噪声。对于所需的系统分辨率，选择具有尽可能低输出噪声电压的基准非常重要。精密电压基准（例如 ADR4525）在 0.1 Hz 至 10 Hz 范围内产生低输出噪声。然而，随着电路带宽的增加，可能需要对参考的输出进行滤波以最大限度地降低输出噪声。
+
+
+
+
+
+
